@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Bloom | Cozy Quests</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-pink: #fff0f3;
+            --card-white: #ffffff;
+            --accent-pink: #ffccd5;
+            --dark-pink: #ff85a1;
+            --text-main: #7a5c61;
+        }
+
+        body {
+            background-color: var(--bg-pink);
+            font-family: 'Segoe UI', cursive, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            color: var(--text-main);
+        }
+
+        /* --- FLOATING CHARMS --- */
+        .charm {
+            position: absolute;
+            font-size: 2rem;
+            opacity: 0.3;
+            animation: float-charms 15s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes float-charms {
+            0% { transform: translateY(110vh) rotate(0deg); }
+            100% { transform: translateY(-10vh) rotate(360deg); }
+        }
+
+        /* --- MAIN CARD --- */
+        .container {
+            background: var(--card-white);
+            padding: 2.5rem;
+            border-radius: 40px;
+            box-shadow: 0 15px 35px rgba(255, 182, 193, 0.4);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            border: 6px solid var(--accent-pink);
+            position: relative;
+        }
+
+        .xp-badge {
+            background: var(--accent-pink);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        /* --- LOOT BOX --- */
+        #loot-box {
+            font-size: 80px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            animation: bounce 2s infinite;
+        }
+        #loot-box:hover { transform: scale(1.1); }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-20px);}
+            60% {transform: translateY(-10px);}
+        }
+
+        .hidden { display: none; }
+
+        /* --- BUTTONS --- */
+        .btn {
+            background: var(--dark-pink);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: filter 0.2s;
+        }
+        .btn:disabled { background: #e0e0e0; cursor: not-allowed; }
+        .btn-reroll { background: #bde0fe; color: #5d5d5d; }
+
+        .hobby-tag {
+            color: var(--dark-pink);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.8rem;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="charms-container"></div>
+
+<div class="container">
+    <div class="xp-badge">✨ Streak: <span id="streak-count">0</span> Days</div>
+    
+    <div id="box-screen">
+        <div id="loot-box" onclick="revealTask()">🎁</div>
+        <p>Click to unwrap today's quest!</p>
+    </div>
+
+    <div id="task-screen" class="hidden">
+        <div class="hobby-tag" id="hobby-tag">GUITAR</div>
+        <h2 id="task-text" style="margin: 15px 0;">Loading...</h2>
+        
+        <button class="btn btn-reroll" id="reroll-btn" onclick="rerollTask()">🪄 Reroll (1 left)</button>
+        <button class="btn" id="done-btn" onclick="completeTask()">💖 Done!</button>
+    </div>
+</div>
+
+<script>
+    const tasks = [
+        // --- GUITAR ---
+        { hobby: "Guitar", task: "Write a 30-second 'Theme Song' for your favorite snack using only 3 chords." },
+        { hobby: "Guitar", task: "Recreate the sound of a ticking clock using only muted strings and a rhythmic strum." },
+        { hobby: "Guitar", task: "Find a song you love and figure out the 'bass line' on your low E and A strings by ear." },
+        { hobby: "Guitar", task: "Record yourself playing a chord, then try to 'slide' into that same chord from two frets below." },
+        { hobby: "Guitar", task: "Play a familiar song, but change the 'vibe' by strumming it like a heavy metal track or a lullaby." },
+
+        // --- PIANO ---
+        { hobby: "Piano", task: "Compose a 'Rainy Day' loop using only the black keys (Pentatonic scale)." },
+        { hobby: "Piano", task: "Play a simple song (like Happy Birthday) but keep your left hand exactly one octave higher than usual." },
+        { hobby: "Piano", task: "Find the 'ugliest' sounding chord possible, then find one note to add that makes it sound beautiful." },
+        { hobby: "Piano", task: "Close your eyes and try to find 'Middle C' and a 'G' purely by feeling the patterns of the black keys." },
+        { hobby: "Piano", task: "Play a melody using only your thumb and pinky—no other fingers allowed!" },
+
+        // --- ART ---
+        { hobby: "Art", task: "Find a spill or a smudge on a piece of paper and turn it into a tiny monster using a fine-liner." },
+        { hobby: "Art", task: "Paint or draw a 'Self Portrait' using only colors that represent your current mood (no skin tones!)." },
+        { hobby: "Art", task: "Draw your room, but from the perspective of a tiny ant on the floor looking up." },
+        { hobby: "Art", task: "Create a 'Texture Map': fill a page with 12 small squares, each showing a different texture (fur, glass, wood, etc.)." },
+        { hobby: "Art", task: "Sketch a character, but their 'hair' must be made of something non-hair (like flames, clouds, or spaghetti)." },
+
+        // --- SEWING ---
+        { hobby: "Sewing", task: "Sew a 'Secret Pocket' onto the inside of your favorite hoodie or jacket." },
+        { hobby: "Sewing", task: "Make a 'Patchwork Coaster' using only the smallest scraps from your leftover fabric bin." },
+        { hobby: "Sewing", task: "Give a pair of socks 'Personalities' by sewing on button eyes and embroidery thread hair." },
+        { hobby: "Sewing", task: "Create a 'Drawstring Dice Bag'—it's small, quick, and perfect for practicing circles." },
+        { hobby: "Sewing", task: "Rescue a garment with a hole by using 'Visible Mending'—make the patch look like a heart or a star." },
+
+        // --- CROCHET ---
+        { hobby: "Crochet", task: "Crochet a 'Jacket' for your favorite mug to keep your tea warm." },
+        { hobby: "Crochet", task: "Make a 'Flower Keychain' using three different colors of scrap yarn." },
+        { hobby: "Crochet", task: "Stitch a 'Stress Ball'—crochet a small sphere, stuff it with yarn scraps, and seal it up." },
+        { hobby: "Crochet", task: "Create a 'Sproutie' (a tiny leaf/vine) to tie onto your headphone cord or bag strap." },
+        { hobby: "Crochet", task: "Freeform crochet a 'Cozy' for your crochet hook handles to make them ergonomic." }
+    ];
+let hasRerolled = false;
+    let streak = localStorage.getItem('hobbyStreak') || 0;
+    document.getElementById('streak-count').innerText = streak;
+
+    // --- Floating Charms ---
+    const emojis = ['🎸', '🎹', '🎨', '🧶', '🪡', '✨', '🎀'];
+    for (let i = 0; i < 15; i++) {
+        let charm = document.createElement('div');
+        charm.className = 'charm';
+        charm.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+        charm.style.left = Math.random() * 100 + "vw";
+        charm.style.animationDelay = Math.random() * 10 + "s";
+        document.getElementById('charms-container').appendChild(charm);
+    }
+
+    function revealTask() {
+        document.getElementById('box-screen').classList.add('hidden');
+        document.getElementById('task-screen').classList.remove('hidden');
+        setDailyTask();
+    }
+
+    function setDailyTask() {
+        const today = new Date().toDateString();
+        // Use the date string as a seed for the random index
+        let seed = today.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+        const index = seed % tasks.length;
+        displayTask(index);
+    }
+
+    function displayTask(index) {
+        document.getElementById('hobby-tag').innerText = tasks[index].hobby;
+        document.getElementById('task-text').innerText = tasks[index].task;
+    }
+
+    function rerollTask() {
+        if (!hasRerolled) {
+            const newIndex = Math.floor(Math.random() * tasks.length);
+            displayTask(newIndex);
+            hasRerolled = true;
+            document.getElementById('reroll-btn').disabled = true;
+            document.getElementById('reroll-btn').innerText = "No rerolls left!";
+        }
+    }
+
+    function completeTask() {
+        // Heart Confetti
+        const count = 200;
+        const defaults = { origin: { y: 0.7 }, colors: ['#ffb3c1', '#ffccd5', '#ffffff'] };
+        confetti({ ...defaults, particleCount: 40, scalar: 2, shapes: ['heart'] });
+        
+        // Update Streak
+        streak++;
+        localStorage.setItem('hobbyStreak', streak);
+        document.getElementById('streak-count').innerText = streak;
+        document.getElementById('done-btn').disabled = true;
+        document.getElementById('done-btn').innerText = "Quest Complete! 🌟";
+    }
+</script>
+
+</body>
+</html>
